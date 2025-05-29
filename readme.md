@@ -36,7 +36,7 @@ pip install requests beautifulsoup4
 ## Usage
 
 ```bash
-python3 sqli_scanner.py [OPTIONS]
+python3 sqlhound.py [OPTIONS]
 ```
 
 ### Options
@@ -58,25 +58,25 @@ python3 sqli_scanner.py [OPTIONS]
 ### Scan URLs from a file
 
 ```bash
-python3 sqli_scanner.py --urls urls.txt --threads 10 --output vulnerable.txt
+python3 sqlhound.py --urls urls.txt --threads 10 --output vulnerable.txt
 ```
 
 ### Search Bing with dorks and scan top 20 results per dork
 
 ```bash
-python3 sqli_scanner.py --dorks "inurl:index.php?id=" "inurl:product.php?id=" --limit 20 --threads 8
+python3 sqlhound.py --dorks "inurl:index.php?id=" "inurl:product.php?id=" --limit 20 --threads 8
 ```
 
 ### Enumerate subdomains for example.com and scan
 
 ```bash
-python3 sqli_scanner.py --domain example.com --threads 10
+python3 sqlhound.py --domain example.com --threads 10
 ```
 
 ### Search Bing dorks restricted to a specific domain
 
 ```bash
-python3 sqli_scanner.py --dorks "inurl:page.php?id=" --dorkdomain example.com --limit 15
+python3 sqlhound.py --dorks "inurl:page.php?id=" --dorkdomain example.com --limit 15
 ```
 
 ---
